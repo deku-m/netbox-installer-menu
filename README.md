@@ -7,10 +7,15 @@ All the steps from the offical guide can be found here: https://netbox.readthedo
 After the installation is ready try to secure nginx with a certificate of your own!
 Providing a secure webpage for netbox.
 
+Backup part creates a full or schema-only backup the file is store in the directory /opt/netbox/backups/database/.
+Which then can also be scheduled in cron through the menu.
+Or the sql files can be send to external sftp server.
+After that you can also restore the sql-files.
+
 ## Menu
 Providing a menu with the following:
 1. Install
-2. Update
+2. Update 
 3. Configure
    1. LDAP
    2. SSO
