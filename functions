@@ -1,0 +1,656 @@
+#!/bin/bash
+
+#Files included
+source vars
+source colors
+
+color_green() {
+  echo -ne "$BGreen$1$Clear"
+}
+color_red() {
+  echo -ne "$BRed$1$Clear"
+}
+color_yellow() {
+  echo -ne "$BYellow$1$Clear"
+}
+color_blue() {
+  echo -ne "$BBlue$1$Clear"
+}
+
+netbox_new_version() {
+  echo -e "Enter the netbox version without $(color_red '"v"') and press Enter:"
+  read -r VERSION
+}
+
+os_check() {
+ if [[ $(lsb_release -d) == *20.04* ]]; then
+   UBUNTU_VERSION=20
+else
+   echo -e "-----------------------------------------------------------------------"
+   echo -e "$(color_red 'You are not running Ubuntu 20.04. Installation cancelled.')"
+   echo -e "-----------------------------------------------------------------------"
+   exit 1
+fi
+}
+
+netbox_check() {
+ if [[ -d /opt/netbox ]]; then 
+   echo -e "-------------------------------------------------------------------------------"
+   echo -e "$(color_red 'Netbox installation found in /opt/netbox. Installation cancelled.')"
+   echo -e "-------------------------------------------------------------------------------"
+   exit 1
+fi
+}
+
+get_ip() {
+INTERFACE=$(netstat -i | awk '!/Kernel|Iface|lo/ {print $1," "}')
+IP_IN=$(ip route get 1 | awk '{print $7;exit}')
+IP_OUT=$(curl --interface "$INTERFACE" --connect-timeout 2 -s4 icanhazip.com)
+}
+
+prepare_system() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Loading Ubuntu updates...')"
+echo -e "Please be patient and wait a moment..."
+echo -e "----------------------------------------------------"
+DEBIAN_FRONTEND=noninteractive apt update > /dev/null 2>&1
+if [ "$?" -gt "0" ];
+  then
+    echo -e "-------------------------------------------------------------------------"
+    echo -e "$(color_red 'System update not successful. Check out manually apt update.')"
+    echo -e "-------------------------------------------------------------------------"
+ exit 1
+fi
+}
+
+postgres_db() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup PostgreSQL...')"
+echo -e "----------------------------------------------------"
+apt install -y postgresql
+systemctl start postgresql
+systemctl enable postgresql
+su - postgres -c "psql -c 'CREATE DATABASE netbox;'"
+su - postgres -c "psql -c \"CREATE USER netbox WITH PASSWORD '$POSTGRESPW';\""
+su - postgres -c "psql -c 'GRANT ALL PRIVILEGES ON DATABASE netbox TO netbox;'"
+clear
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'PostgreSQL installation not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+redis() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup Redis...')"
+echo -e "----------------------------------------------------"
+sudo apt install -y redis-server
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'Redis installation not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+netbox() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup netbox...')"
+echo -e "----------------------------------------------------"
+apt install -y python3 python3-pip python3-venv python3-dev build-essential libxml2-dev libxslt1-dev libffi-dev libpq-dev libssl-dev zlib1g-dev
+wget "https://github.com/netbox-community/netbox/archive/v${VERSION}.tar.gz"
+tar -xzf v"${VERSION}".tar.gz -C /opt
+ln -s /opt/netbox-"${VERSION}"/ /opt/netbox
+adduser --system --group netbox
+chown --recursive netbox /opt/netbox/netbox/media/
+cp /opt/netbox/netbox/netbox/configuration_example.py /opt/netbox/netbox/netbox/configuration.py
+sed -i "s/ALLOWED_HOSTS = \[\]/ALLOWED_HOSTS = \['*'\]/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "s/'USER': '',/'USER': 'netbox',/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "0,/'PASSWORD':/ s/'PASSWORD': '',/'PASSWORD': '$POSTGRESPW',/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "s/SECRET_KEY = ''/SECRET_KEY = '${SECRET_KEY}'/" /opt/netbox/netbox/netbox/configuration.py
+/opt/netbox/upgrade.sh
+rm v"$VERSION.tar.gz"
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'netbox installation not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+netboxsuperuser() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup Super User...')"
+echo -e "----------------------------------------------------"
+source /opt/netbox/venv/bin/activate
+cd /opt/netbox/netbox || return
+python3 manage.py createsuperuser
+cd ~ || return
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'Super User config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+housekeeping() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup Housekeeping...')"
+echo -e "----------------------------------------------------"
+chmod +x /opt/netbox/contrib/netbox-housekeeping.sh
+ln -s /opt/netbox/contrib/netbox-housekeeping.sh /etc/cron.daily/netbox-housekeeping
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'Housekeeping config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+gunicorn() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup Gunicorn...')"
+echo -e "----------------------------------------------------"
+cp /opt/netbox/contrib/gunicorn.py /opt/netbox/gunicorn.py
+cp -v /opt/netbox/contrib/*.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl start netbox netbox-rq
+systemctl enable netbox netbox-rq
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'Gunicorn config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+nginx() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup nginx...')"
+echo -e "----------------------------------------------------"
+apt install -y nginx
+touch /etc/nginx/sites-available/netbox
+cat << EOF > /etc/nginx/sites-available/netbox
+server {
+    listen 80;
+    listen [::]:80;
+#   listen 443 ssl;
+    # CHANGE THIS TO YOUR SERVER'S NAME
+    server_name netbox;
+#    ssl_certificate /etc/ssl/certs/netbox.crt;
+#    ssl_certificate_key /etc/ssl/private/netbox.key;
+    client_max_body_size 25m;
+    location /static/ {
+        alias /opt/netbox/netbox/static/;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header X-Forwarded-Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+#server {
+#    # Redirect HTTP traffic to HTTPS
+#    listen 80;
+#    server_name _;
+#    return 301 https://\$host\$request_uri;
+#}
+EOF
+rm /etc/nginx/sites-enabled/default
+ln -s /etc/nginx/sites-available/netbox /etc/nginx/sites-enabled/netbox
+systemctl restart nginx
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'nginx config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+summary() {
+echo -e "======================================================================================="
+echo -e "$(color_yellow 'Installation Summary:')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_green 'Installed netbox version:') $(color_red ''$VERSION'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_green 'Open your browser:') $(color_red 'http://'$IP_IN'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_green 'Open your browser:') $(color_red 'http://'$IP_OUT'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_green 'PostgreSQL password:') $(color_red ''$POSTGRESPW'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_green 'Secret Key:') $(color_red ''$SECRET_KEY'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_red 'Dont forget the SSL cert! /etc/nginx/sites-enabled/netbox.conf')" 
+echo -e "======================================================================================"
+}
+
+netbox_old_version() {
+  echo -e "Enter  your current netbox version without $(color_red '"v"') and press Enter:"
+  read -r OLDVERSION
+}
+
+netbox_update() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Update netbox...')"
+echo -e "----------------------------------------------------"
+wget "https://github.com/netbox-community/netbox/archive/v${VERSION}.tar.gz"
+tar -xzf v"${VERSION}".tar.gz -C /opt
+ln -sfn /opt/netbox-"${VERSION}"/ /opt/netbox
+cp /opt/netbox-"${OLDVERSION}"/local_requirements.txt /opt/netbox/
+cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/configuration.py /opt/netbox/netbox/netbox/
+cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/ldap_config.py /opt/netbox/netbox/netbox/
+cp -pr /opt/netbox-"$OLDVERSION"/netbox/media/ /opt/netbox/netbox/
+cp -r /opt/netbox-"$OLDVERSION"/netbox/scripts /opt/netbox/netbox/
+cp -r /opt/netbox-"$OLDVERSION"/netbox/reports /opt/netbox/netbox/
+cp /opt/netbox-"$OLDVERSION"/gunicorn.py /opt/netbox/
+/opt/netbox/upgrade.sh
+systemctl restart netbox netbox-rq
+rm v"${VERSION}".tar.gz
+if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'netbox update not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+update_summary() {
+echo -e "======================================================================================="
+echo -e "$(color_yellow 'Update Summary:')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "Updated netbox from $(color_red 'v'$OLDVERSION'') to $(color_green 'v'$VERSION'')"
+echo -e "----------------------------------------------------------------------------------"
+echo -e "$(color_red 'If upgrading from a release prior to NetBox v3.0, check that a cron task\n
+(or similar scheduled process) has been configured to run NetBox nightly\n
+housekeeping command.')"
+echo -e "======================================================================================"
+exit 0
+}
+
+update() {
+  os_check
+  netbox_old_version
+  netbox_new_version
+  netbox_update
+  update_summary
+}
+
+sso() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup SSO...')"
+echo -e "Read the netbox guide SSO first before entering configuration values"
+echo -e "https://docs.netbox.dev"
+echo -e "----------------------------------------------------"
+echo -e "Enter  your current $(color_red 'REMOTE_AUTH_BACKEND') and press Enter:"
+read -r REMOTE_AUTH_BACKEND
+echo -e "Enter  your current $(color_red 'SOCIAL_AUTH_AZUREAD_OAUTH2_KEY') and press Enter:"
+read -r SOCIAL_AUTH_AZUREAD_OAUTH2_KEY
+echo -e "Enter  your current $(color_red 'SOCIAL_AUTH_AZUREAD_OAUTH2_SECRET') and press Enter:"
+read -r SOCIAL_AUTH_AZUREAD_OAUTH2_SECRET
+sed -i "s/REMOTE_AUTH_BACKEND = 'netbox.authentication.RemoteUserBackend'/REMOTE_AUTH_BACKEND = '${REMOTE_AUTH_BACKEND}'/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$a# SSO" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$aSOCIAL_AUTH_AZUREAD_OAUTH2_KEY = '${SOCIAL_AUTH_AZUREAD_OAUTH2_KEY}'/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$aSOCIAL_AUTH_AZUREAD_OAUTH2_SECRET = '${SOCIAL_AUTH_AZUREAD_OAUTH2_SECRET}'/" /opt/netbox/netbox/netbox/configuration.py
+sudo systemctl restart netbox
+echo -e "----------------------------------------------------------"
+echo -e "$(color_green 'SSO configuration completed')"
+echo -e "----------------------------------------------------------"
+  if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'SSO config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+ldap() {
+  install_ldap_package
+  configure_ldap
+  create_ldap_config
+  change_ldap_settings
+}
+
+install_ldap_package() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Install LDAP system packages...')"
+echo -e "----------------------------------------------------"
+sudo apt install -y libldap2-dev libsasl2-dev libssl-dev
+  if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'LDAP install not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+configure_ldap() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Configure LDAP...')"
+echo -e "----------------------------------------------------"
+source /opt/netbox/venv/bin/activate
+pip3 install django-auth-ldap
+sudo sh -c "echo 'django-auth-ldap' >> /opt/netbox/local_requirements.txt"
+sed -i "s/REMOTE_AUTH_BACKEND = 'netbox.authentication.RemoteUserBackend'/REMOTE_AUTH_BACKEND = 'netbox.authentication.LDAPBackend'/" /opt/netbox/netbox/netbox/configuration.py
+  if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'LDAP config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+create_ldap_config() {
+touch /opt/netbox/netbox/netbox/ldap_config.py
+cat<< EOF>/opt/netbox/netbox/netbox/ldap_config.py
+import ldap
+# Server URI
+AUTH_LDAP_SERVER_URI = ""
+# The following may be needed if you are binding to Active Directory.
+AUTH_LDAP_CONNECTION_OPTIONS = {
+    ldap.OPT_REFERRALS: 0
+}
+# Set the DN and password for the NetBox service account.
+AUTH_LDAP_BIND_DN = ""
+AUTH_LDAP_BIND_PASSWORD = ""
+# Include this setting if you want to ignore certificate errors. This might be needed to accept a self-signed cert.
+# Note that this is a NetBox-specific setting which sets:
+#     ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+LDAP_IGNORE_CERT_ERRORS = True
+# Include this setting if you want to validate the LDAP server certificates against a CA certificate directory on your server
+# Note that this is a NetBox-specific setting which sets:
+#     ldap.set_option(ldap.OPT_X_TLS_CACERTDIR, LDAP_CA_CERT_DIR)
+LDAP_CA_CERT_DIR = '/etc/ssl/certs'
+# Include this setting if you want to validate the LDAP server certificates against your own CA.
+# Note that this is a NetBox-specific setting which sets:
+#     ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, LDAP_CA_CERT_FILE)
+LDAP_CA_CERT_FILE = '/path/to/example-CA.crt'
+from django_auth_ldap.config import LDAPSearch
+# This search matches users with the sAMAccountName equal to the provided username. This is required if the user's
+# username is not in their DN (Active Directory).
+AUTH_LDAP_USER_SEARCH = LDAPSearch("ou=Users,dc=example,dc=com",
+                                    ldap.SCOPE_SUBTREE,
+                                    "(sAMAccountName=%(user)s)")
+# If a user's DN is producible from their username, we don't need to search.
+AUTH_LDAP_USER_DN_TEMPLATE = ""
+# You can map user attributes to Django attributes as so.
+AUTH_LDAP_USER_ATTR_MAP = {
+    "first_name": "givenName",
+    "last_name": "sn",
+    "email": "mail"
+}
+from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
+# This search ought to return all groups to which the user belongs. django_auth_ldap uses this to determine group
+# hierarchy.
+AUTH_LDAP_GROUP_SEARCH = LDAPSearch("", 
+		                    ldap.SCOPE_SUBTREE,
+                                    "(objectClass=group)")
+AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
+# Define a group required to login.
+AUTH_LDAP_REQUIRE_GROUP = ""
+# Mirror LDAP group assignments.
+AUTH_LDAP_MIRROR_GROUPS = True
+# Define special user types using groups. Exercise great caution when assigning superuser status.
+AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+    "is_active": "",
+    "is_staff": "",
+    "is_superuser": ""
+}
+# For more granular permissions, we can map LDAP groups to Django groups.
+AUTH_LDAP_FIND_GROUP_PERMS = True
+# Cache groups for one hour to reduce LDAP traffic
+AUTH_LDAP_CACHE_TIMEOUT = 3600
+EOF
+}
+
+change_ldap_settings() {
+  echo -e "----------------------------------------------------"
+  echo -e "$(color_yellow 'Change LDAP Settings...')"
+  echo -e "Read the netbox guide LDAP first before entering configuration values"
+  echo -e "https://docs.netbox.dev"
+  echo -e "----------------------------------------------------"
+  echo -e "$(color_yellow 'Change LDAP General Server Configuration...')"
+  echo -e "Enter  your current $(color_red 'AUTH_LDAP_SERVER_URI') and press Enter:"
+  read -r AUTH_LDAP_SERVER_URI
+  echo -e "Enter  your current $(color_red 'AUTH_LDAP_BIND_DN') and press Enter:"
+  read -r AUTH_LDAP_BIND_DN
+  echo -e "Enter  your current $(color_red 'AUTH_LDAP_BIND_PASSWORD') and press Enter:"
+  read -r AUTH_LDAP_BIND_PASSWORD
+  echo -e "Change User Authentication..."
+  echo -e "Enter  your current $(color_red 'AUTH_AUTH_LDAP_USER_SEARCH') and press Enter:"
+  read -r AUTH_LDAP_USER_SEARCH
+  echo -e "Enter  your current $(color_red 'AUTH_LDAP_USER_DN_TEMPLATE') and press Enter:"
+  read -r AUTH_LDAP_USER_DN_TEMPLATE
+  echo -e "Enter  your current $(color_red 'AUTH_LDAP_REQUIRE_GROUP') and press Enter:"
+  read -r AUTH_LDAP_REQUIRE_GROUP
+  echo -e "User Groups for Permissions..."
+  echo -e "Enter your current $(color_red 'is_active') and press Enter:"
+  read -r is_active
+  echo -e "Enter your current $(color_red 'is_staff') and press Enter:"
+  read -r is_staff
+  echo -e "Enter your current $(color_red 'is_superuser') and press Enter:"
+  read -r is_superuser
+  sed -i 's/AUTH_LDAP_SERVER_URI = ""/AUTH_LDAP_SERVER_URI = "'"${AUTH_LDAP_SERVER_URI}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_BIND_DN = ""/AUTH_LDAP_BIND_DN = "'"${AUTH_LDAP_BIND_DN}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_BIND_PASSWORD = ""/AUTH_LDAP_BIND_PASSWORD = "'"${AUTH_LDAP_BIND_PASSWORD}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_USER_SEARCH = LDAPSearch(""/AUTH_LDAP_USER_SEARCH = LDAPSearch("'"${AUTH_LDAP_USER_SEARCH}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_USER_DN_TEMPLATE = ""/AUTH_LDAP_USER_DN_TEMPLATE = "'"${AUTH_LDAP_USER_DN_TEMPLATE}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_GROUP_SEARCH = LDAPSearch(""/AUTH_LDAP_GROUP_SEARCH = LDAPSearch("'"${AUTH_LDAP_GROUP_SEARCH}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/AUTH_LDAP_REQUIRE_GROUP = ""/AUTH_LDAP_REQUIRE_GROUP = "'"${AUTH_LDAP_REQUIRE_GROUP}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/"is_active": ""/"is_active": "'"${is_active}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/"is_staff": ""/"is_staff": "'"${is_staff}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sed -i 's/"is_superuser": ""/"is_superuser": "'"${is_superuser}"'"/' /opt/netbox/netbox/netbox/ldap_config.py
+  sudo systemctl restart netbox
+  echo -e "----------------------------------------------------------"
+  echo -e "$(color_green 'LDAP configuration completed')"
+  echo -e "----------------------------------------------------------"
+    if [ "$?" -gt "0" ];
+      then
+        echo -e "----------------------------------------------------------"
+        echo -e "$(color_red 'LDAP Settings not successful.')"
+        echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+full_backup() {
+  apt install -y sshpass
+  FILE="/opt/netbox/backups/full_backup.sh"
+  if [ -f "$FILE" ]; then
+    echo -e "$(color_green 'File already exists.')"
+    bash /opt/netbox/backups/full_backup.sh
+    exit 0
+  else 
+  echo -e "----------------------------------------------------"
+  echo -e "$(color_yellow 'Create full backup of netbox...')"
+  echo -e "----------------------------------------------------"
+  mkdir /opt/netbox/backups/database/
+  cd /opt/netbox/backups/database/ || return
+  echo -e "$(color_yellow 'Creating SQL file please wait...')"
+  sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
+  echo -e "Fill in the information of SFTP sever"
+  echo -e "Enter filename $(color_red '"full_backup"') and press Enter:"
+  read -r full_bck_file
+  echo -e "Enter SFTP server IP:"
+  read -r sftp_host
+  echo -e "Enter username:"
+  read -r sftp_user
+  echo -e "Enter password:"
+  read -r sftp_pass
+  sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+  echo -e "----------------------------------------------------------"
+  echo -e "$(color_green 'Full Backup completed')"
+  echo -e "----------------------------------------------------------"
+  touch /opt/netbox/netbox/netbox/full_backup.sh
+  cat<< EOF>/opt/netbox/backups/full_backup.sh
+		#!/bin/bash
+		sftp_host="$sftp_host"
+		user="$sftp_user"
+		pass="$sftp_pass"
+		full_bck_file="netbox-full-$(date +"%m-%d-%y").sql"
+
+		cd /opt/netbox/backups/database/
+
+		sudo -u postgres pg_dump netbox > "netbox-full-$(date +"%m-%d-%y").sql"
+
+		sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+		exit 1  
+EOF
+fi
+if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Full Backup not successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+fi
+}
+
+schema_only_backup() {
+  apt install -y sshpass
+  FILE="/opt/netbox/backups/schema_backup.sh"
+  if [ -f "$FILE" ]; then
+    echo -e "$(color_green 'File already exists.')"
+    bash /opt/netbox/backups/schema_backup.sh
+    exit 0
+  else 
+  echo -e "----------------------------------------------------"
+  echo -e "$(color_yellow 'Create schema backup of netbox...')"
+  echo -e "----------------------------------------------------"
+  mkdir /opt/netbox/backups/database/
+  cd /opt/netbox/backups/database/ || return
+  echo "$(color_yellow 'Creating SQL file please wait...')"
+  sudo -u postgres pg_dump -s netbox | sudo tee "netbox-schema-$(date +"%m-%d-%y").sql"
+  echo "Fill in the information of SFTP sever"
+  echo -e "Enter filename $(color_red 'schema_backup') and press Enter:"
+  read -r sm_bck_file
+  echo -e "Enter SFTP server IP:"
+  read -r sftp_host
+  echo -e "Enter username:"
+  read -r sftp_user
+  echo -e "Enter password:"
+  read -r sftp_pass
+  sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+  echo -e "----------------------------------------------------------"
+  echo -e "$(color_green 'Schema Backup completed')"
+  echo -e "----------------------------------------------------------"
+  touch /opt/netbox/netbox/netbox/schema_backup.sh
+  cat<< EOF>/opt/netbox/backups/schema_backup.sh
+		#!/bin/bash
+		sftp_host="$sftp_host"
+		user="$sftp_user"
+		pass="$sftp_pass"
+		sm_bck_file="netbox-schema-$(date +"%m-%d-%y").sql"
+
+		cd /opt/netbox/backups/database/
+
+		sudo -u postgres pg_dump -s netbox > "netbox-schema-$(date +"%m-%d-%y").sql"
+
+		sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+		exit 1  
+EOF
+fi
+if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Backup not successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+fi
+}
+
+restore() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Restore netbox database')"
+echo -e "----------------------------------------------------"
+cd /opt/netbox/backups/database/ || return
+echo -e "$(color_yellow 'List files in backup folder')"
+for filename in *.sql; do
+	echo -e "- $filename"
+done
+echo -e "$(color_yellow 'What SQL file do you want to restore...')"
+read -r file
+echo -e "$(color_yellow 'Purge SQL Database please wait...')"
+sudo -u psql -c 'drop database netbox'
+echo -e "$(color_yellow 'Create SQL Database please wait...')"
+sudo -u psql -c 'create database netbox'
+echo -e "$(color_yellow 'Restoring SQL Database please wait...')"
+sudo -u postgres psql netbox | sudo cat "$file"
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Restore completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Restore not successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+schedule_job() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Schedule backup job...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter a User and press Enter:"
+read -r user
+echo -e "Enter file to run $(color_red 'full_backup.sh') or $(color_red 'schema_backup.sh') and press Enter:"
+read -r job_file
+echo -e "Enter the schedule in cron format $(color_red 'min hours day(month) month day(week)') format must be like $(color_red '0 0 * * *') and press Enter:"
+read -r cron
+echo -e "Enter the cron job name and press Enter:"
+read -r cron_file
+echo "$cron $user $job_file" | sudo tee /etc/cron.d/"$cron_file"
+echo "Cron job created. Remove $(color_red '/etc/cron.d/'$cron_file'') to stop it."
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Backup not scheduled successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+install() {
+  netbox_new_version
+  os_check
+  netbox_check
+  get_ip
+  prepare_system
+  postgres_db
+  redis
+  netbox
+  netboxsuperuser
+  housekeeping
+  gunicorn
+  nginx
+  backup_file
+  summary
+}
+
+bye() { 
+  echo "$(color_green 'Bye bye.')"; 
+  exit 0; 
+}
+
+fail() {
+  echo "$(color_red 'Wrong option.')"; 
+  exit 1; 
+}
+
+
