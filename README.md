@@ -8,15 +8,16 @@ After the installation is ready try to secure nginx with a certificate of your o
 Providing a secure webpage for netbox.
 
 ## Menu
+Providing a menu with the following:
 1. Install
 2. Update
 3. Configure
    1. LDAP
    2. SSO
 4. Backup
-   - Full 
-   - Schema-Only
-   - Schedule Job
+   1. Full 
+   2. Schema-Only
+   3. Schedule Job
 5. Restore
 
 ## Screenshots:
