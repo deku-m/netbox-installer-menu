@@ -11,12 +11,12 @@ Providing a secure webpage for netbox.
 1. Install
 2. Update
 3. Configure
-  1. LDAP
-  2. SSO
+  - LDAP
+  - SSO
 4. Backup
-  1. Full 
-  2. Schema-Only
-  3. Schedule Job
+  - Full 
+  - Schema-Only
+  - Schedule Job
 5. Restore
 
 ## Screenshots:
