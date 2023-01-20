@@ -11,8 +11,8 @@ Providing a secure webpage for netbox.
 1. Install
 2. Update
 3. Configure
-   - LDAP
-   - SSO
+   1. LDAP
+   2. SSO
 4. Backup
    - Full 
    - Schema-Only
