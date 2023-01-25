@@ -626,7 +626,7 @@ echo "Cron job created. Remove $(color_red '/etc/cron.d/'$cron_file'') to stop i
   fi
 }
 
-install() {
+install_netbox() {
   netbox_new_version
   os_check
   netbox_check
