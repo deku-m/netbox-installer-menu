@@ -280,7 +280,7 @@ echo -e "=======================================================================
 exit 0
 }
 
-update() {
+update_netbox() {
   os_check
   netbox_old_version
   netbox_new_version
@@ -621,6 +621,60 @@ echo "Cron job created. Remove $(color_red '/etc/cron.d/'$cron_file'') to stop i
     then
       echo -e "----------------------------------------------------------"
       echo -e "$(color_red 'Backup not scheduled successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+install_plugin() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Install plugin...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter the pluginname and press Enter:"
+read -r pluginname
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Plugin installation completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Plugin not installed successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+update_plugin() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Update plugin...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter the pluginname and press Enter:"
+read -r pluginname
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Plugin update completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Plugin not updated successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+remove_plugin() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Remove plugin...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter the pluginname and press Enter:"
+read -r pluginname
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Plugin removal completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Plugin not removed successful.')"
       echo -e "----------------------------------------------------------"
    exit 1
   fi
