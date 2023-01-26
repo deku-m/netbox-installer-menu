@@ -635,14 +635,23 @@ read -r plugin-name
 sudo sh -c "echo $pluginname >> /opt/netbox/netbox/netbox/local_requirements.txt"
 echo -e "Enter the plugin_name for config file and press Enter:"
 read -r plugin_name
-sed -i "\$a# PLUGINS" /opt/netbox/netbox/netbox/configuration.py
-sed -i "\$a/^PLUGINS = [.*/a '${pluginname}', " /opt/netbox/netbox/netbox/configuration/plugin.py
-sed -i "\$a/^PLUGINS_CONFIG = /{.*/a '${pluginname}' /{}, " /opt/netbox/netbox/netbox/configuration/plugin.py
+if grep '#PLUGINS_CONFIG' /opt/netbox/netbox/netbox/configuration.py ; 
+ then
+   sed -i "s/#PLUGINS_CONFIG =/PLUGINS_CONFIG =/" /opt/netbox/netbox/netbox/configuration.py
+else
+
+#TODO ADD plugins to PLUGINS and PLUGINS_CONFIG
+sed -i "s/PLUGINS = []/PLUGINS = [\n/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "s/PLUGINS = []/PLUGINS = [\n/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\aPLUGINS = [/a '${pluginname}', " /opt/netbox/netbox/netbox/configuration.py
+sed -i "\aPLUGINS_CONFIG = {/a '${pluginname}' /{}, " /opt/netbox/netbox/netbox/configuration.py
+
 source /opt/netbox/venv/bin/activate
 pip install $plugin-name
 cd /opt/netbox/netbox/
 python3 manage.py migrate
 python3 manage.py collectstatic --no-input
+sudo systemctl restart netbox
 echo -e "----------------------------------------------------"
 echo -e "$(color_green 'Plugin installation completed')"
 echo -e "----------------------------------------------------"
@@ -663,13 +672,14 @@ echo -e "Enter the plugin-name for requirements file to remove and press Enter:"
 read -r plugin-name
 sed -i "/${plugin-name}/d" /opt/netbox/netbox/netbox/local_requirements.txt
 echo -e "Enter the plugin_name for config file to remove and press Enter:"
-read -r plugin-name
+read -r plugin_name
 sed -i "/${plugin_name}/d" /opt/netbox/netbox/netbox/configuration/plugin.py
 source /opt/netbox/venv/bin/activate
 pip uninstall $plugin-name
 cd /opt/netbox/netbox/
 python3 manage.py migrate
 python3 manage.py collectstatic --no-input
+sudo systemctl restart netbox
 echo -e "----------------------------------------------------"
 echo -e "$(color_green 'Plugin removal completed')"
 echo -e "----------------------------------------------------"
