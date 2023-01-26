@@ -630,8 +630,19 @@ install_plugin() {
 echo -e "----------------------------------------------------"
 echo -e "$(color_yellow 'Install plugin...')"
 echo -e "----------------------------------------------------"
-echo -e "Enter the pluginname and press Enter:"
-read -r pluginname
+echo -e "Enter the plugin-name for requirements file  and press Enter:"
+read -r plugin-name
+sudo sh -c "echo $pluginname >> /opt/netbox/netbox/netbox/local_requirements.txt"
+echo -e "Enter the plugin_name for config file  and press Enter:"
+read -r plugin_name
+sed -i "\$a# PLUGINS" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$a/^PLUGINS = [.*/a '${pluginname}', " /opt/netbox/netbox/netbox/configuration/plugin.py
+sed -i "\$a/^PLUGINS_CONFIG = /{.*/a '${pluginname}' /{}, " /opt/netbox/netbox/netbox/configuration/plugin.py
+source /opt/netbox/venv/bin/activate
+pip install $plugin-name
+cd /opt/netbox/netbox/
+python3 manage.py migrate
+python3 manage.py collectstatic --no-input
 echo -e "----------------------------------------------------"
 echo -e "$(color_green 'Plugin installation completed')"
 echo -e "----------------------------------------------------"
@@ -648,8 +659,16 @@ update_plugin() {
 echo -e "----------------------------------------------------"
 echo -e "$(color_yellow 'Update plugin...')"
 echo -e "----------------------------------------------------"
-echo -e "Enter the pluginname and press Enter:"
-read -r pluginname
+echo -e "Enter the plugin-name for requirements file  and press Enter:"
+read -r plugin-name
+sudo sh -c "echo $pluginname >> /opt/netbox/netbox/netbox/local_requirements.txt"
+echo -e "Enter the plugin_name for config file  and press Enter:"
+read -r plugin_name
+source /opt/netbox/venv/bin/activate
+pip install $plugin-name
+cd /opt/netbox/netbox/
+python3 manage.py migrate
+python3 manage.py collectstatic --no-input
 echo -e "----------------------------------------------------"
 echo -e "$(color_green 'Plugin update completed')"
 echo -e "----------------------------------------------------"
@@ -666,8 +685,16 @@ remove_plugin() {
 echo -e "----------------------------------------------------"
 echo -e "$(color_yellow 'Remove plugin...')"
 echo -e "----------------------------------------------------"
-echo -e "Enter the pluginname and press Enter:"
-read -r pluginname
+echo -e "Enter the plugin-name for requirements file  and press Enter:"
+read -r plugin-name
+sudo sh -c "echo $pluginname >> /opt/netbox/netbox/netbox/local_requirements.txt"
+echo -e "Enter the plugin_name for config file  and press Enter:"
+read -r plugin-name
+source /opt/netbox/venv/bin/activate
+pip uninstall $plugin-name
+cd /opt/netbox/netbox/
+python3 manage.py migrate
+python3 manage.py collectstatic --no-input
 echo -e "----------------------------------------------------"
 echo -e "$(color_green 'Plugin removal completed')"
 echo -e "----------------------------------------------------"
@@ -706,5 +733,3 @@ fail() {
   echo "$(color_red 'Wrong option.')"; 
   exit 1; 
 }
-
-
