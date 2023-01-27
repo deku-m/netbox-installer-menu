@@ -635,13 +635,15 @@ read -r plugin_req
 sudo sh -c "echo $plugin_req >> /opt/netbox/netbox/netbox/local_requirements.txt"
 echo -e "Enter the plugin_name for config file and press Enter:"
 read -r plugin_config
+echo -e "Enter the plugin additional configuration for config file and press Enter:"
+read -r plugin_additional
 if grep '#PLUGINS_CONFIG' /opt/netbox/netbox/netbox/configuration.py ; 
  then
    sed -i "s/#PLUGINS_CONFIG = {/PLUGINS_CONFIG = { \n}/" /opt/netbox/netbox/netbox/configuration.py
 else
 sed -i "s/\PLUGINS = \[]/PLUGINS = [ \n]/" /opt/netbox/netbox/netbox/configuration.py
 sed -i "/\PLUGINS = \[/a ${plugin_config}," /opt/netbox/netbox/netbox/configuration.py
-sed -i "\aPLUGINS_CONFIG = {/a ${plugin_config} /{}, " /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS_CONFIG = {/a ${plugin_config} ${plugin_additional}," /opt/netbox/netbox/netbox/configuration.py
 source /opt/netbox/venv/bin/activate
 pip install $plugin-name
 cd /opt/netbox/netbox/
