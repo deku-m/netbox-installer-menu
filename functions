@@ -669,7 +669,7 @@ echo -e "$(color_yellow 'Remove plugin...')"
 echo -e "----------------------------------------------------"
 echo -e "Enter the plugin-name for requirements file to remove and press Enter:"
 read -r plugin_req
-sed -i "/${plugin-name}/d" /opt/netbox/netbox/netbox/local_requirements.txt
+sed -i "/${plugin_req}/d" /opt/netbox/netbox/netbox/local_requirements.txt
 echo -e "Enter the plugin_name for config file to remove and press Enter:"
 read -r plugin_config
 sed -i "/${plugin_config}/d" /opt/netbox/netbox/netbox/configuration.py
