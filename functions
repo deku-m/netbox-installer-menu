@@ -672,7 +672,7 @@ read -r plugin_req
 sed -i "/${plugin-name}/d" /opt/netbox/netbox/netbox/local_requirements.txt
 echo -e "Enter the plugin_name for config file to remove and press Enter:"
 read -r plugin_config
-sed -i "/${plugin_config}/d" /opt/netbox/netbox/netbox/configuration/plugin.py
+sed -i "/${plugin_config}/d" /opt/netbox/netbox/netbox/configuration.py
 source /opt/netbox/venv/bin/activate
 pip uninstall $plugin_req
 cd /opt/netbox/netbox/
