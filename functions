@@ -639,13 +639,10 @@ if grep '#PLUGINS_CONFIG' /opt/netbox/netbox/netbox/configuration.py ;
  then
    sed -i "s/#PLUGINS_CONFIG =/PLUGINS_CONFIG =/" /opt/netbox/netbox/netbox/configuration.py
 else
-
-#TODO ADD plugins to PLUGINS and PLUGINS_CONFIG
-sed -i "s/PLUGINS = []/PLUGINS = [\n/" /opt/netbox/netbox/netbox/configuration.py
-sed -i "s/PLUGINS = []/PLUGINS = [\n/" /opt/netbox/netbox/netbox/configuration.py
-sed -i "\aPLUGINS = [/a '${pluginname}', " /opt/netbox/netbox/netbox/configuration.py
+TAB=$'\t'
+sed -i "s/\PLUGINS = \[]/PLUGINS = [ \n]/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS = \[/a ${TAB} ${pluginname}," /opt/netbox/netbox/netbox/configuration.py
 sed -i "\aPLUGINS_CONFIG = {/a '${pluginname}' /{}, " /opt/netbox/netbox/netbox/configuration.py
-
 source /opt/netbox/venv/bin/activate
 pip install $plugin-name
 cd /opt/netbox/netbox/
