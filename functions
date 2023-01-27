@@ -647,7 +647,7 @@ sed -i "/\PLUGINS_CONFIG = {/a\ \t ${plugin_config} ${plugin_additional}," /opt/
 fi
 source /opt/netbox/venv/bin/activate
 pip install $plugin_req
-cd /opt/netbox/netbox/
+cd /opt/netbox/netbox/ || return
 python3 manage.py migrate
 python3 manage.py collectstatic --no-input
 sudo systemctl restart netbox
@@ -675,7 +675,7 @@ read -r plugin_config
 sed -i "/${plugin_config}/d" /opt/netbox/netbox/netbox/configuration.py
 source /opt/netbox/venv/bin/activate
 pip uninstall $plugin_req
-cd /opt/netbox/netbox/
+cd /opt/netbox/netbox/ || return
 python3 manage.py migrate
 python3 manage.py collectstatic --no-input
 sudo systemctl restart netbox
