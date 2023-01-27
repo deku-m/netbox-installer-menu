@@ -642,8 +642,8 @@ if grep '#PLUGINS_CONFIG' /opt/netbox/netbox/netbox/configuration.py ;
    sed -i "s/#PLUGINS_CONFIG = {/PLUGINS_CONFIG = { \n}/" /opt/netbox/netbox/netbox/configuration.py
 else
 sed -i "s/\PLUGINS = \[]/PLUGINS = [ \n]/" /opt/netbox/netbox/netbox/configuration.py
-sed -i "/\PLUGINS = \[/a ${plugin_config}," /opt/netbox/netbox/netbox/configuration.py
-sed -i "/\PLUGINS_CONFIG = {/a ${plugin_config} ${plugin_additional}," /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS = \[/a^/\t ${plugin_config}," /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS_CONFIG = {/a^/\t ${plugin_config} ${plugin_additional}," /opt/netbox/netbox/netbox/configuration.py
 fi
 source /opt/netbox/venv/bin/activate
 pip install $plugin_req
