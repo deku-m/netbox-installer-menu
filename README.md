@@ -15,15 +15,18 @@ After that you can also restore the sql-files.
 ## Menu
 Providing a menu with the following:
 1. Install
-2. Update 
-3. Configure
+2. Update
+3. Plugins
+   1. Install
+   2. Remove
+4. Configure
    1. LDAP
    2. SSO
-4. Backup
+5. Backup
    1. Full 
    2. Schema-Only
    3. Schedule Job
-5. Restore
+6. Restore
 
 ## Screenshots:
 ![afbeelding](https://user-images.githubusercontent.com/37069737/213706323-b79ae76d-ba37-4190-aa6d-9f6f14472ef9.png)

@@ -12,6 +12,23 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+submenu_p() {
+    echo -ne "
+$(color_red 'Plugins')
+$(color_green '1)') Install
+$(color_green '2)') Remove
+$(color_green '0)') Exit
+$(color_blue 'Choose an option:')"
+    read -r ans
+    case $ans in
+    1) install_plugin_ ; submenu_p ;;
+    2) remove_plugin ; submenu_p ;;
+    3) mainmenu ;;
+    0) bye  ;;
+    *) fail  ;;
+    esac
+}
+
 submenu_c() {
     echo -ne "
 $(color_red 'Configure')
@@ -55,18 +72,20 @@ mainmenu() {
 $(color_red 'MAIN MENU')
 $(color_green '1)') Install
 $(color_green '2)') Update
-$(color_green '3)') Configure
-$(color_green '4)') Backup
-$(color_green '5)') Restore
+$(color_green '3)') Plugins
+$(color_green '4)') Configure
+$(color_green '5)') Backup
+$(color_green '6)') Restore
 $(color_green '0)') Exit
 $(color_blue 'Choose an option:')"
     read -r ans
     case $ans in
-    1) install ; mainmenu ;;
-    2) update ; mainmenu ;;
-    3) submenu_c ; mainmenu ;;
-    4) submenu_b ; mainmenu ;;
-    5) restore ; mainmenu ;;
+    1) install_netbox ; mainmenu ;;
+    2) update_netbox ; mainmenu ;;
+    3) submenu_p ; mainmenu ;;
+    4) submenu_c ; mainmenu ;;
+    5) submenu_b ; mainmenu ;;
+    6) restore ; mainmenu ;;
     0) bye ;;
     *) fail ;;
     esac

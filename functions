@@ -280,7 +280,7 @@ echo -e "=======================================================================
 exit 0
 }
 
-update() {
+update_netbox() {
   os_check
   netbox_old_version
   netbox_new_version
@@ -626,7 +626,72 @@ echo "Cron job created. Remove $(color_red '/etc/cron.d/'$cron_file'') to stop i
   fi
 }
 
-install() {
+install_plugin() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Install plugin...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter the plugin-name for requirements file and press Enter:"
+read -r plugin_req
+sudo sh -c "echo $plugin_req >> /opt/netbox/netbox/netbox/local_requirements.txt"
+echo -e "Enter the plugin_name for config file and press Enter:"
+read -r plugin_config
+echo -e "Enter the plugin additional configuration for config file and press Enter:"
+read -r plugin_additional
+if grep '#PLUGINS_CONFIG' /opt/netbox/netbox/netbox/configuration.py ; 
+ then
+   sed -i "s/#PLUGINS_CONFIG = {/PLUGINS_CONFIG = { \n}/" /opt/netbox/netbox/netbox/configuration.py
+else
+sed -i "s/\PLUGINS = \[]/PLUGINS = [ \n]/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS = \[/a\ \t ${plugin_config}," /opt/netbox/netbox/netbox/configuration.py
+sed -i "/\PLUGINS_CONFIG = {/a\ \t ${plugin_config} ${plugin_additional}," /opt/netbox/netbox/netbox/configuration.py
+fi
+source /opt/netbox/venv/bin/activate
+pip install $plugin_req
+cd /opt/netbox/netbox/ || return
+python3 manage.py migrate
+python3 manage.py collectstatic --no-input
+sudo systemctl restart netbox
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Plugin installation completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Plugin not installed successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+remove_plugin() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Remove plugin...')"
+echo -e "----------------------------------------------------"
+echo -e "Enter the plugin-name for requirements file to remove and press Enter:"
+read -r plugin_req
+sed -i "/${plugin_req}/d" /opt/netbox/netbox/netbox/local_requirements.txt
+echo -e "Enter the plugin_name for config file to remove and press Enter:"
+read -r plugin_config
+sed -i "/${plugin_config}/d" /opt/netbox/netbox/netbox/configuration.py
+source /opt/netbox/venv/bin/activate
+pip uninstall $plugin_req
+cd /opt/netbox/netbox/ || return
+python3 manage.py migrate
+python3 manage.py collectstatic --no-input
+sudo systemctl restart netbox
+echo -e "----------------------------------------------------"
+echo -e "$(color_green 'Plugin removal completed')"
+echo -e "----------------------------------------------------"
+  if [ "$?" -gt "0" ];
+    then
+      echo -e "----------------------------------------------------------"
+      echo -e "$(color_red 'Plugin not removed successful.')"
+      echo -e "----------------------------------------------------------"
+   exit 1
+  fi
+}
+
+install_netbox() {
   netbox_new_version
   os_check
   netbox_check

@@ -1,9 +1,11 @@
 #!/bin/bash
 
+# PASSWORDs
 CURDIR=`pwd`
 POSTGRESPW=$(tr -cd '[:alnum:]' < /dev/urandom | fold -w25 | head -n1)
 SECRET_KEY=$(tr -cd '[:alnum:]' < /dev/urandom | fold -w55 | head -n1)
 HOSTNAME=$hostname
 
+# BACKUP FILES FORMAT
 full_bck_file='netbox-full-$(date +"%m-%d-%y").sql'
 sm_bck_file='netbox-schema-$(date +"%m-%d-%y").sql'
