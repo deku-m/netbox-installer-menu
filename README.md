@@ -12,7 +12,7 @@ Which then can also be scheduled in cron through the menu.
 Or the sql files can be send to external sftp server.
 After that you can also restore the sql-files.
 
-"Its might not perfect and improvements are welcome."
+"Its might not be perfect and improvements are always welcome."
 
 ## Menu
 Providing a menu with the following:
