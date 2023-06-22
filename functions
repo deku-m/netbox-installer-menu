@@ -232,7 +232,7 @@ echo -e "$(color_green 'PostgreSQL password:') $(color_red ''$POSTGRESPW'')"
 echo -e "----------------------------------------------------------------------------------"
 echo -e "$(color_green 'Secret Key:') $(color_red ''$SECRET_KEY'')"
 echo -e "----------------------------------------------------------------------------------"
-echo -e "$(color_red 'Dont forget the SSL cert! /etc/nginx/sites-enabled/netbox.conf')" 
+echo -e "$(color_red 'Dont forget the SSL cert! /etc/nginx/sites-enabled/netbox')" 
 echo -e "======================================================================================"
 }
 
