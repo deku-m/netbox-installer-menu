@@ -23,11 +23,11 @@ netbox_new_version() {
 }
 
 os_check() {
- if [[ $(lsb_release -d) == *20.04* ]]; then
-   UBUNTU_VERSION=20
+ if [[ $(lsb_release -d) == *22.04* ]]; then
+   UBUNTU_VERSION=22
 else
    echo -e "-----------------------------------------------------------------------"
-   echo -e "$(color_red 'You are not running Ubuntu 20.04. Installation cancelled.')"
+   echo -e "$(color_red 'You are not running Ubuntu 22.04. Installation cancelled.')"
    echo -e "-----------------------------------------------------------------------"
    exit 1
 fi
