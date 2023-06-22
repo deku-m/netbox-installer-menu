@@ -704,7 +704,6 @@ install_netbox() {
   housekeeping
   gunicorn
   nginx
-  backup_file
   summary
 }
 
