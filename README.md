@@ -1,6 +1,6 @@
 # Netbox Installer  Menu
 
-This is menu script based in BASH to install, update, configure and backup **Netbox** on **Ubuntu 20.04**. 
+This is menu script based in BASH to install, update, configure and backup **Netbox** on **Ubuntu 22.04**. 
 You can choose which Netbox version you will install or update.
 
 All the steps from the offical guide can be found here: https://netbox.readthedocs.io/en/stable/installation/
