@@ -479,7 +479,7 @@ full_backup() {
   echo -e "----------------------------------------------------"
   echo -e "$(color_yellow 'Create full backup of netbox...')"
   echo -e "----------------------------------------------------"
-  mkdir /opt/netbox/backups/database/
+  mkdir -p /opt/netbox/backups/database
   cd /opt/netbox/backups/database/ || return
   echo -e "$(color_yellow 'Creating SQL file please wait...')"
   sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
@@ -532,7 +532,7 @@ schema_only_backup() {
   echo -e "----------------------------------------------------"
   echo -e "$(color_yellow 'Create schema backup of netbox...')"
   echo -e "----------------------------------------------------"
-  mkdir /opt/netbox/backups/database/
+  mkdir -p /opt/netbox/backups/database
   cd /opt/netbox/backups/database/ || return
   echo "$(color_yellow 'Creating SQL file please wait...')"
   sudo -u postgres pg_dump -s netbox | sudo tee "netbox-schema-$(date +"%m-%d-%y").sql"
