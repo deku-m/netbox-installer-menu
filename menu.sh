@@ -21,7 +21,7 @@ $(color_green '0)') Exit
 $(color_blue 'Choose an option:')"
     read -r ans
     case $ans in
-    1) install_plugin_ ; submenu_p ;;
+    1) install_plugin ; submenu_p ;;
     2) remove_plugin ; submenu_p ;;
     3) mainmenu ;;
     0) bye  ;;
