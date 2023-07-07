@@ -250,7 +250,9 @@ tar -xzf v"${VERSION}".tar.gz -C /opt
 ln -sfn /opt/netbox-"${VERSION}"/ /opt/netbox
 cp /opt/netbox-"${OLDVERSION}"/local_requirements.txt /opt/netbox/
 cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/configuration.py /opt/netbox/netbox/netbox/
+cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/plugins.py /opt/netbox/netbox/netbox/
 cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/ldap_config.py /opt/netbox/netbox/netbox/
+cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/saml_config.py /opt/netbox/netbox/netbox/
 cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/samlgetgroups.py /opt/netbox/netbox/netbox/
 cp -pr /opt/netbox-"$OLDVERSION"/netbox/media/ /opt/netbox/netbox/
 cp -r /opt/netbox-"$OLDVERSION"/netbox/scripts /opt/netbox/netbox/
@@ -289,9 +291,9 @@ update_netbox() {
   update_summary
 }
 
-sso() {
+sso_oauth() {
 echo -e "----------------------------------------------------"
-echo -e "$(color_yellow 'Setup SSO...')"
+echo -e "$(color_yellow 'Setup SSO OAuth...')"
 echo -e "Read the netbox guide SSO first before entering configuration values"
 echo -e "https://docs.netbox.dev"
 echo -e "----------------------------------------------------"
@@ -313,6 +315,38 @@ echo -e "----------------------------------------------------------"
   then
     echo -e "----------------------------------------------------------"
     echo -e "$(color_red 'SSO config not successful.')"
+    echo -e "----------------------------------------------------------"
+ exit 1
+fi
+}
+
+sso_saml() {
+echo -e "----------------------------------------------------"
+echo -e "$(color_yellow 'Setup SSO SAML...')"
+echo -e "Read the netbox guide SSO first before entering configuration values"
+echo -e "https://docs.netbox.dev"
+echo -e "----------------------------------------------------"
+echo -e "Enter  your current $(color_red 'REMOTE_AUTH_BACKEND') and press Enter:"
+read -r REMOTE_AUTH_BACKEND
+echo -e "Enter  your current $(color_red 'SOCIAL_AUTH_SAML_SP_ENTITY_ID') and press Enter:"
+read -r SOCIAL_AUTH_SAML_SP_ENTITY_ID
+echo -e "Enter  your current $(color_red 'SOCIAL_AUTH_SAML_SP_PUBLIC_CERT') and press Enter:"
+read -r SOCIAL_AUTH_SAML_SP_PUBLIC_CERT
+echo -e "Enter  your current $(color_red 'SOCIAL_AUTH_SAML_SP_PRIVATE_KEY') and press Enter:"
+read -r SOCIAL_AUTH_SAML_SP_PRIVATE_KEY
+
+sed -i "s/REMOTE_AUTH_BACKEND = 'netbox.authentication.RemoteUserBackend'/REMOTE_AUTH_BACKEND = '${REMOTE_AUTH_BACKEND}'/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$a# SSO" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$aSOCIAL_AUTH_AZUREAD_OAUTH2_KEY = '${SOCIAL_AUTH_AZUREAD_OAUTH2_KEY}'/" /opt/netbox/netbox/netbox/configuration.py
+sed -i "\$aSOCIAL_AUTH_AZUREAD_OAUTH2_SECRET = '${SOCIAL_AUTH_AZUREAD_OAUTH2_SECRET}'/" /opt/netbox/netbox/netbox/configuration.py
+sudo systemctl restart netbox
+echo -e "----------------------------------------------------------"
+echo -e "$(color_green 'SSO SAML configuration completed')"
+echo -e "----------------------------------------------------------"
+  if [ "$?" -gt "0" ];
+  then
+    echo -e "----------------------------------------------------------"
+    echo -e "$(color_red 'SSO SAML config not successful.')"
     echo -e "----------------------------------------------------------"
  exit 1
 fi
