@@ -251,6 +251,7 @@ ln -sfn /opt/netbox-"${VERSION}"/ /opt/netbox
 cp /opt/netbox-"${OLDVERSION}"/local_requirements.txt /opt/netbox/
 cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/configuration.py /opt/netbox/netbox/netbox/
 cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/ldap_config.py /opt/netbox/netbox/netbox/
+cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/samlgetgroups.py /opt/netbox/netbox/netbox/
 cp -pr /opt/netbox-"$OLDVERSION"/netbox/media/ /opt/netbox/netbox/
 cp -r /opt/netbox-"$OLDVERSION"/netbox/scripts /opt/netbox/netbox/
 cp -r /opt/netbox-"$OLDVERSION"/netbox/reports /opt/netbox/netbox/
