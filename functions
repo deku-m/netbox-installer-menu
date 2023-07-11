@@ -255,6 +255,7 @@ cp /opt/netbox-"${OLDVERSION}"/netbox/netbox/samlgetgroups.py /opt/netbox/netbox
 cp -pr /opt/netbox-"$OLDVERSION"/netbox/media/ /opt/netbox/netbox/
 cp -r /opt/netbox-"$OLDVERSION"/netbox/scripts /opt/netbox/netbox/
 cp -r /opt/netbox-"$OLDVERSION"/netbox/reports /opt/netbox/netbox/
+cp -pr /opt/netbox-"$OLDVERSION"/backups/ /opt/netbox/backups/
 cp /opt/netbox-"$OLDVERSION"/gunicorn.py /opt/netbox/
 /opt/netbox/upgrade.sh
 systemctl restart netbox netbox-rq
@@ -493,7 +494,9 @@ full_backup() {
   read -r sftp_user
   echo -e "Enter password:"
   read -r sftp_pass
-  sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+  echo "$sftp_pass" > .sshpassword
+  gpg -c .sshpassword
+  rm .sshpassword
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Full Backup completed')"
   echo -e "----------------------------------------------------------"
@@ -509,7 +512,7 @@ full_backup() {
 
 		sudo -u postgres pg_dump netbox > "netbox-full-$(date +"%m-%d-%y").sql"
 
-		sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -dq .sshpassword | sshpass  scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
@@ -546,7 +549,9 @@ schema_only_backup() {
   read -r sftp_user
   echo -e "Enter password:"
   read -r sftp_pass
-  sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+  echo "$sftp_pass" > .sshpassword
+  gpg -c .sshpassword
+  rm .sshpassword
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Schema Backup completed')"
   echo -e "----------------------------------------------------------"
@@ -562,7 +567,7 @@ schema_only_backup() {
 
 		sudo -u postgres pg_dump -s netbox > "netbox-schema-$(date +"%m-%d-%y").sql"
 
-		sshpass -p "$sftp_pass" scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -dq .sshpassword | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
@@ -717,5 +722,3 @@ fail() {
   echo "$(color_red 'Wrong option.')"; 
   exit 1; 
 }
-
-
