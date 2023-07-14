@@ -505,7 +505,6 @@ full_backup() {
 		#!/bin/bash
 		sftp_host="$sftp_host"
 		user="$sftp_user"
-		pass="$sftp_pass"
 		full_bck_file="netbox-full-$(date +"%m-%d-%y").sql"
 
 		cd /opt/netbox/backups/database/
@@ -560,7 +559,6 @@ schema_only_backup() {
 		#!/bin/bash
 		sftp_host="$sftp_host"
 		user="$sftp_user"
-		pass="$sftp_pass"
 		sm_bck_file="netbox-schema-$(date +"%m-%d-%y").sql"
 
 		cd /opt/netbox/backups/database/
