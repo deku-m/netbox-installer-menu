@@ -511,7 +511,7 @@ full_backup() {
 
 		sudo -u postgres pg_dump netbox > "netbox-full-$(date +"%m-%d-%y").sql"
 
-		gpg -dq .sshpassword | sshpass  scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -dq .sshpassword.gpg | sshpass  scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
@@ -565,7 +565,7 @@ schema_only_backup() {
 
 		sudo -u postgres pg_dump -s netbox > "netbox-schema-$(date +"%m-%d-%y").sql"
 
-		gpg -dq .sshpassword | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -dq .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
