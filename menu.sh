@@ -1,4 +1,5 @@
 #!/bin/bash
+stty erase ^H
 
 # Files included
 source colors
