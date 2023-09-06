@@ -491,7 +491,6 @@ full_backup() {
   read -r sftp_host
   echo -e "Enter username:"
   read -r sftp_user
-  cd /opt/netbox/backups/
   echo -e "Enter password:"
   read -r sftp_pass
   echo "$sftp_pass" > .sshpassword
@@ -500,7 +499,7 @@ full_backup() {
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Full Backup completed')"
   echo -e "----------------------------------------------------------"
-  touch /opt/netbox/netbox/netbox/full_backup.sh
+  touch /opt/netbox/backups/full_backup.sh
   cat<< EOF>/opt/netbox/backups/full_backup.sh
 		#!/bin/bash
 		sftp_host="$sftp_host"
@@ -511,7 +510,7 @@ full_backup() {
 
 		sudo -u postgres pg_dump netbox > "netbox-full-$(date +"%m-%d-%y").sql"
 
-		gpg -dq .sshpassword.gpg | sshpass  scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
@@ -544,7 +543,6 @@ schema_only_backup() {
   read -r sftp_host
   echo -e "Enter username:"
   read -r sftp_user
-  cd /opt/netbox/backups/
   echo -e "Enter password:"
   read -r sftp_pass
   echo "$sftp_pass" > .sshpassword
@@ -553,7 +551,7 @@ schema_only_backup() {
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Schema Backup completed')"
   echo -e "----------------------------------------------------------"
-  touch /opt/netbox/netbox/netbox/schema_backup.sh
+  touch /opt/netbox/backups/schema_backup.sh
   cat<< EOF>/opt/netbox/backups/schema_backup.sh
 		#!/bin/bash
 		sftp_host="$sftp_host"
@@ -564,7 +562,7 @@ schema_only_backup() {
 
 		sudo -u postgres pg_dump -s netbox > "netbox-schema-$(date +"%m-%d-%y").sql"
 
-		gpg -dq .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
 		exit 1  
 EOF
 fi
