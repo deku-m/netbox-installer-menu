@@ -487,8 +487,6 @@ full_backup() {
   echo -e "$(color_yellow 'Creating SQL file please wait...')"
   sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
   echo -e "Fill in the information of SFTP sever"
-  echo -e "Enter filename $(color_red '"full_backup"') and press Enter:"
-  read -r full_bck_file
   echo -e "Enter SFTP server IP:"
   read -r sftp_host
   echo -e "Enter username:"
@@ -541,8 +539,6 @@ schema_only_backup() {
   echo "$(color_yellow 'Creating SQL file please wait...')"
   sudo -u postgres pg_dump -s netbox | sudo tee "netbox-schema-$(date +"%m-%d-%y").sql"
   echo "Fill in the information of SFTP sever"
-  echo -e "Enter filename $(color_red 'schema_backup') and press Enter:"
-  read -r sm_bck_file
   echo -e "Enter SFTP server IP:"
   read -r sftp_host
   echo -e "Enter username:"
