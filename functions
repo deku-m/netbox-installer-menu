@@ -491,6 +491,7 @@ full_backup() {
   read -r sftp_host
   echo -e "Enter username:"
   read -r sftp_user
+  cd /opt/netbox/backups/
   echo -e "Enter password:"
   read -r sftp_pass
   echo "$sftp_pass" > .sshpassword
@@ -543,6 +544,7 @@ schema_only_backup() {
   read -r sftp_host
   echo -e "Enter username:"
   read -r sftp_user
+  cd /opt/netbox/backups/
   echo -e "Enter password:"
   read -r sftp_pass
   echo "$sftp_pass" > .sshpassword
