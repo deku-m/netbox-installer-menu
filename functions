@@ -108,6 +108,8 @@ tar -xzf v"${VERSION}".tar.gz -C /opt
 ln -s /opt/netbox-"${VERSION}"/ /opt/netbox
 adduser --system --group netbox
 chown --recursive netbox /opt/netbox/netbox/media/
+chown --recursive netbox /opt/netbox/netbox/reports/
+chown --recursive netbox /opt/netbox/netbox/scripts/
 cp /opt/netbox/netbox/netbox/configuration_example.py /opt/netbox/netbox/netbox/configuration.py
 sed -i "s/ALLOWED_HOSTS = \[\]/ALLOWED_HOSTS = \['*'\]/" /opt/netbox/netbox/netbox/configuration.py
 sed -i "s/'USER': '',/'USER': 'netbox',/" /opt/netbox/netbox/netbox/configuration.py
