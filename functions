@@ -475,6 +475,7 @@ change_ldap_settings() {
 
 full_backup() {
   apt install -y sshpass
+  apt install -y locate
   FILE="/opt/netbox/backups/full_backup.sh"
   if [ -f "$FILE" ]; then
     echo -e "$(color_green 'File already exists.')"
@@ -491,6 +492,8 @@ full_backup() {
   echo -e "Fill in the information of SFTP sever"
   echo -e "Enter SFTP server IP:"
   read -r sftp_host
+  echo -e "Enter directory ( /path/to ):"
+  read -r sftp_dir
   echo -e "Enter username:"
   read -r sftp_user
   echo -e "Enter password:"
@@ -504,15 +507,16 @@ full_backup() {
   touch /opt/netbox/backups/full_backup.sh
   cat<< EOF>/opt/netbox/backups/full_backup.sh
 		#!/bin/bash
-		sftp_host="$sftp_host"
+		host="$sftp_host"
 		user="$sftp_user"
-		full_bck_file="netbox-full-$(date +"%m-%d-%y").sql"
+		dir="$sftp_dir"
+		full_bck_latest="$( locate .jpg | xargs ls -rt | tail -1)"
 
 		cd /opt/netbox/backups/database/
 
 		sudo -u postgres pg_dump netbox > "netbox-full-$(date +"%m-%d-%y").sql"
 
-		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$full_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$full_bck_latest" "$user"@"$host":"$dir"
 		exit 1  
 EOF
 fi
@@ -527,6 +531,7 @@ fi
 
 schema_only_backup() {
   apt install -y sshpass
+  apt install -y locate
   FILE="/opt/netbox/backups/schema_backup.sh"
   if [ -f "$FILE" ]; then
     echo -e "$(color_green 'File already exists.')"
@@ -540,9 +545,11 @@ schema_only_backup() {
   cd /opt/netbox/backups/database/ || return
   echo "$(color_yellow 'Creating SQL file please wait...')"
   sudo -u postgres pg_dump -s netbox | sudo tee "netbox-schema-$(date +"%m-%d-%y").sql"
-  echo "Fill in the information of SFTP sever"
+  echo -e "Fill in the information of SFTP sever"
   echo -e "Enter SFTP server IP:"
   read -r sftp_host
+  echo -e "Enter directory ( /path/to ):"
+  read -r sftp_dir
   echo -e "Enter username:"
   read -r sftp_user
   echo -e "Enter password:"
@@ -556,15 +563,16 @@ schema_only_backup() {
   touch /opt/netbox/backups/schema_backup.sh
   cat<< EOF>/opt/netbox/backups/schema_backup.sh
 		#!/bin/bash
-		sftp_host="$sftp_host"
+		host="$sftp_host"
 		user="$sftp_user"
-		sm_bck_file="netbox-schema-$(date +"%m-%d-%y").sql"
+		dir="$sftp_dir"
+		sm_bck_latest="$( locate .jpg | xargs ls -rt | tail -1)"
 
 		cd /opt/netbox/backups/database/
 
 		sudo -u postgres pg_dump -s netbox > "netbox-schema-$(date +"%m-%d-%y").sql"
 
-		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$sm_bck_file" "$sftp_user"@"$sftp_host":
+		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"$sm_bck_latest" "$user"@"$host":"$dir"
 		exit 1  
 EOF
 fi
