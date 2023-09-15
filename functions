@@ -504,19 +504,27 @@ full_backup() {
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Full Backup completed')"
   echo -e "----------------------------------------------------------"
+  touch /opt/netbox/backups/config
+  cat<< EOF>/opt/netbox/backups/config
+  #!/bin/bash
+
+        host="$sftp_host"
+        user="$sftp_user"
+        dir="$sftp_dir"
+EOF
   touch /opt/netbox/backups/full_backup.sh
-  cat<< EOF>/opt/netbox/backups/full_backup.sh
-		#!/bin/bash
-		host="$sftp_host"
-		user="$sftp_user"
-		dir="$sftp_dir"
+  cat<<\EOF>/opt/netbox/backups/full_backup.sh
+  #!/bin/bash
 
-		cd /opt/netbox/backups/database/
+        #Files included
+        source config
 
-		sudo -u postgres pg_dump netbox > "netbox-full-`date +%d-%m-%y`.sql"
+        cd /opt/netbox/backups/database/
 
-		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .jpg | xargs ls -rt | tail -1)" "user"@"host":"dir"
-		exit 1  
+        sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
+
+        gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .jpg | xargs ls -rt | tail -1)" "$user"@"$host":"$dir"
+        exit 1
 EOF
 fi
 if [ "$?" -gt "0" ];
@@ -559,19 +567,27 @@ schema_only_backup() {
   echo -e "----------------------------------------------------------"
   echo -e "$(color_green 'Schema Backup completed')"
   echo -e "----------------------------------------------------------"
+  touch /opt/netbox/backups/config
+  cat<< EOF>/opt/netbox/backups/config
+  #!/bin/bash
+
+        host="$sftp_host"
+        user="$sftp_user"
+        dir="$sftp_dir"
+EOF
   touch /opt/netbox/backups/schema_backup.sh
-  cat<< EOF>/opt/netbox/backups/schema_backup.sh
-		#!/bin/bash
-		host="$sftp_host"
-		user="$sftp_user"
-		dir="$sftp_dir"
+  cat<<\EOF>/opt/netbox/backups/schema_backup.sh
+  #!/bin/bash
 
-		cd /opt/netbox/backups/database/
+        #Files included
+        source config
 
-		sudo -u postgres pg_dump -s netbox > "netbox-schema-`date +%d-%m-%y`.sql"
+        cd /opt/netbox/backups/database/
 
-		gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .jpg | xargs ls -rt | tail -1)" "user"@"host":"dir"
-		exit 1  
+        sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
+
+        gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .jpg | xargs ls -rt | tail -1)" "$user"@"$host":"$dir"
+        exit 1
 EOF
 fi
 if [ "$?" -gt "0" ];
