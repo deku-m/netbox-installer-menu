@@ -476,7 +476,7 @@ change_ldap_settings() {
 full_backup() {
   apt install -y sshpass gnupg
   FILE1="/opt/netbox/backups/schema_backup.sh"
-  FILE2="/opt/netbox/backups/.config"
+  FILE2="/opt/netbox/backups/.config.gpg"
   if [ -f "$FILE1" "$FILE2" ]; then
     echo -e "$(color_green 'Files already exists.')"
     bash /opt/netbox/backups/full_backup.sh
@@ -547,7 +547,7 @@ fi
 schema_only_backup() {
   apt install -y sshpass gnupg
   FILE1="/opt/netbox/backups/schema_backup.sh"
-  FILE2="/opt/netbox/backups/.config"
+  FILE2="/opt/netbox/backups/.config.gpg"
   if [ -f "$FILE1" "$FILE2" ]; then
     echo -e "$(color_green 'Files already exists.')"
     bash /opt/netbox/backups/schema_backup.sh
