@@ -474,11 +474,11 @@ change_ldap_settings() {
 }
 
 full_backup() {
-  apt install -y sshpass
-  apt install -y locate
-  FILE="/opt/netbox/backups/full_backup.sh"
-  if [ -f "$FILE" ]; then
-    echo -e "$(color_green 'File already exists.')"
+  apt install -y sshpass gnupg
+  FILE1="/opt/netbox/backups/schema_backup.sh"
+  FILE2="/opt/netbox/backups/.config"
+  if [ -f "$FILE1" "$FILE2" ]; then
+    echo -e "$(color_green 'Files already exists.')"
     bash /opt/netbox/backups/full_backup.sh
     exit 0
   else 
@@ -498,32 +498,40 @@ full_backup() {
   read -r sftp_user
   echo -e "Enter password:"
   read -r sftp_pass
-  echo "$sftp_pass" > .sshpassword
-  gpg -c .sshpassword
-  rm .sshpassword
   echo -e "----------------------------------------------------------"
-  echo -e "$(color_green 'Full Backup completed')"
+  echo -e "$(color_green 'Config completed')"
   echo -e "----------------------------------------------------------"
-  touch /opt/netbox/backups/config
-  cat<< EOF>/opt/netbox/backups/config
+  touch /opt/netbox/backups/.config
+  cat<< EOF>/opt/netbox/backups/.config
   #!/bin/bash
 
         host="$sftp_host"
         user="$sftp_user"
         dir="$sftp_dir"
+	pass="$sftp_pass"
 EOF
+  gpg -c /opt/netbox/backups/.config
+  rm /opt/netbox/backups/.config
+  echo -e "----------------------------------------------------------"
+  echo -e "$(color_green 'Full Backup completed')"
+  echo -e "----------------------------------------------------------"
   touch /opt/netbox/backups/full_backup.sh
   cat<<\EOF>/opt/netbox/backups/full_backup.sh
   #!/bin/bash
 
         #Files included
-        source config
+	source "gpg -dq .config.gpg"
 
+	file="netbox-full-$(date +"%m-%d-%y").sql"
+
+	echo "Change to netbox database folder"
         cd /opt/netbox/backups/database/
 
-        sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
+        echo "Creating SQL file please wait..."
+	sudo -u postgres pg_dump netbox | sudo tee "netbox-full-$(date +"%m-%d-%y").sql"
 
-        gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .sql | xargs ls -rt | tail -1)" "$user"@"$host":"$dir"
+	echo "Uploading file to SFTP sever"
+        sshpass -p "$pass" scp /opt/netbox/backup/database/$file $user@$host:$dir
         exit 1
 EOF
 fi
@@ -537,11 +545,11 @@ fi
 }
 
 schema_only_backup() {
-  apt install -y sshpass
-  apt install -y locate
-  FILE="/opt/netbox/backups/schema_backup.sh"
-  if [ -f "$FILE" ]; then
-    echo -e "$(color_green 'File already exists.')"
+  apt install -y sshpass gnupg
+  FILE1="/opt/netbox/backups/schema_backup.sh"
+  FILE2="/opt/netbox/backups/.config"
+  if [ -f "$FILE1" "$FILE2" ]; then
+    echo -e "$(color_green 'Files already exists.')"
     bash /opt/netbox/backups/schema_backup.sh
     exit 0
   else 
@@ -561,32 +569,40 @@ schema_only_backup() {
   read -r sftp_user
   echo -e "Enter password:"
   read -r sftp_pass
-  echo "$sftp_pass" > .sshpassword
-  gpg -c .sshpassword
-  rm .sshpassword
   echo -e "----------------------------------------------------------"
-  echo -e "$(color_green 'Schema Backup completed')"
+  echo -e "$(color_green 'Config completed')"
   echo -e "----------------------------------------------------------"
-  touch /opt/netbox/backups/config
-  cat<< EOF>/opt/netbox/backups/config
+  touch /opt/netbox/backups/.config
+  cat<< EOF>/opt/netbox/backups/.config
   #!/bin/bash
 
         host="$sftp_host"
         user="$sftp_user"
         dir="$sftp_dir"
+	pass="$sftp_pass"
 EOF
+  gpg -c /opt/netbox/backups/.config
+  rm /opt/netbox/backups/.config
+  echo -e "----------------------------------------------------------"
+  echo -e "$(color_green 'Schema Backup completed')"
+  echo -e "----------------------------------------------------------"
   touch /opt/netbox/backups/schema_backup.sh
   cat<<\EOF>/opt/netbox/backups/schema_backup.sh
   #!/bin/bash
 
-        #Files included
-        source config
+	#Files included
+	source "gpg -dq .config.gpg"
 
+	file="netbox-full-$(date +"%m-%d-%y").sql"
+
+	echo "Change to netbox database folder"
         cd /opt/netbox/backups/database/
 
+        echo "Creating SQL file please wait..."
         sudo -u postgres pg_dump netbox | sudo tee "netbox-schema-$(date +"%m-%d-%y").sql"
 
-        gpg -d -q .sshpassword.gpg | sshpass scp /opt/netbox/backup/database/"( locate .sql | xargs ls -rt | tail -1)" "$user"@"$host":"$dir"
+        echo "Uploading file to SFTP sever"
+	sshpass -p "$pass" scp /opt/netbox/backup/database/$file $user@$host:$dir
         exit 1
 EOF
 fi
