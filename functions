@@ -263,6 +263,9 @@ cp /opt/netbox-"$OLDVERSION"/gunicorn.py /opt/netbox/
 /opt/netbox/upgrade.sh
 systemctl restart netbox netbox-rq
 rm v"${VERSION}".tar.gz
+chown --recursive netbox /opt/netbox/netbox/media/
+chown --recursive netbox /opt/netbox/netbox/reports/
+chown --recursive netbox /opt/netbox/netbox/scripts/
 if [ "$?" -gt "0" ];
   then
     echo -e "----------------------------------------------------------"
